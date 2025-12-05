@@ -1,0 +1,27 @@
+name: Site Health Check
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Hourly (stealthy timing)
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max
+    steps:
+    - name: Setup Browser
+      run: |
+        sudo apt update
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt update
+        sudo apt install -y google-chrome-stable
+    - name: Test Site
+      run: |
+        pkill cloudflared || true
+        pkill python3 || true
+        pkill chrome || true
+        google-chrome --no-sandbox --disable-dev-shm-usage --disable-gpu --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-session "${{ secrets.URL }}" &
+        sleep 21600  # 6 hours
+        pkill chrome
